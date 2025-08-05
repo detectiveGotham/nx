@@ -52,7 +52,7 @@
     <!-- Loading View (Gatekeeper is checking auth) -->
     <div id="loading-view" class="flex flex-col items-center justify-center min-h-screen">
         <div class="loader"></div>
-        <p class="mt-4 text-lg text-gray-600 dark:text-gray-400">Loading your data...</p>
+        <p class="mt-4 text-lg text-gray-600 dark:text-gray-400">Verifying session...</p>
     </div>
 
     <!-- Main App Container (Hidden until data is loaded) -->
@@ -142,12 +142,11 @@
         // --- DOM Elements ---
         const loadingView = document.getElementById('loading-view');
         const appContainer = document.getElementById('app-container');
-        const logoutBtn = document.getElementById('logout-btn');
-
+        
         // --- STATE MANAGEMENT ---
         let state;
-        let userId; // To store the logged-in user's ID
-        let dataRef; // To store the reference to the user's data document in Firestore
+        let userId; 
+        let dataRef; 
 
         const defaultState = {
             mainTitle: 'Productivity Hub',
@@ -161,17 +160,32 @@
             },
         };
 
-        // --- FIREBASE GATEKEEPER ---
-        onAuthStateChanged(auth, user => {
+        // --- FIREBASE GATEKEEPER (Corrected Logic) ---
+        let authInitialized = false;
+
+        // This will run when the auth state is finally determined
+        const unsubscribe = onAuthStateChanged(auth, user => {
+            authInitialized = true;
+            unsubscribe(); // Stop listening after the first result to prevent loops
             if (user) {
+                // User is signed in, proceed to load the app
                 userId = user.uid;
-                // Use a path that is allowed by our security rules
                 dataRef = doc(db, 'users', userId, 'private_data', 'main');
                 loadDataFromFirebase();
             } else {
+                // User is not signed in, redirect to login
                 window.location.href = 'index.html';
             }
         });
+
+        // Failsafe: If after 3 seconds auth is still not initialized, redirect.
+        setTimeout(() => {
+            if (!authInitialized) {
+                console.log("Auth timeout, redirecting.");
+                window.location.href = 'index.html';
+            }
+        }, 3000);
+
 
         // --- FIREBASE DATA HANDLING ---
         async function loadDataFromFirebase() {
@@ -187,7 +201,6 @@
                     };
                 } else {
                     state = { ...defaultState };
-                    // For a new user, save the default state immediately
                     await saveDataToFirebase(true); 
                 }
             } catch (error) {
@@ -365,6 +378,8 @@
         function init() {
             applyTheme(state.currentTheme);
 
+            const logoutBtn = document.getElementById('logout-btn');
+
             // Main Header Listeners
             logoutBtn.addEventListener('click', async () => {
                 try {
@@ -456,7 +471,6 @@
             document.getElementById('bulk-add-btn').addEventListener('click', () => openModal('bulk-add-modal'));
             document.getElementById('close-bulk-add-modal').addEventListener('click', () => closeModal('bulk-add-modal'));
             document.getElementById('process-bulk-add').addEventListener('click', () => {
-                // Bulk add logic would go here
                 alert("Bulk add functionality coming soon!");
                 closeModal('bulk-add-modal');
             });
