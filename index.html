@@ -67,7 +67,7 @@
             </p>
         </div>
 
-        <!-- Welcome View (Hidden by default) -->
+        <!-- Welcome View (Restored) -->
         <div id="welcome-view" class="hidden w-full max-w-2xl p-10 text-center bg-white dark:bg-gray-800 rounded-lg shadow-xl">
             <h1 id="welcome-message" class="text-4xl font-bold text-gray-900 dark:text-white"></h1>
             <p class="mt-4 text-lg text-gray-600 dark:text-gray-400">What would you like to do today?</p>
@@ -101,8 +101,7 @@
             signInWithPopup,
             signOut 
         } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
-        import { getFirestore } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-firestore.js";
-
+        
         // Your web app's Firebase configuration
         const firebaseConfig = {
             apiKey: "AIzaSyCWcYAAvjgIiAvwqufOVRUfmPJFnJfMu_8",
@@ -116,7 +115,6 @@
         // Initialize Firebase
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
-        const db = getFirestore(app);
 
         // --- DOM Elements ---
         const loginView = document.getElementById('login-view');
@@ -135,16 +133,16 @@
 
         let isLoginMode = true;
 
-        // --- Authentication Logic ---
-
-        // Listen for authentication state changes
+        // --- Authentication Logic (Restored to original) ---
         onAuthStateChanged(auth, user => {
             if (user) {
+                // User is signed in, show the welcome view
                 const username = user.displayName || user.email.split('@')[0];
                 welcomeMessage.textContent = `Welcome, ${username}!`;
                 loginView.classList.add('hidden');
                 welcomeView.classList.remove('hidden');
             } else {
+                // User is signed out, show the login form
                 loginView.classList.remove('hidden');
                 welcomeView.classList.add('hidden');
             }
@@ -163,7 +161,7 @@
                 } else {
                     await createUserWithEmailAndPassword(auth, email, password);
                 }
-                // onAuthStateChanged will handle the UI update
+                // onAuthStateChanged will handle showing the welcome view
             } catch (error) {
                 console.error("Auth Error:", error);
                 errorMessage.textContent = getFriendlyErrorMessage(error.code);
@@ -176,7 +174,7 @@
             try {
                 const provider = new GoogleAuthProvider();
                 await signInWithPopup(auth, provider);
-                // onAuthStateChanged will handle the UI update
+                // onAuthStateChanged will handle showing the welcome view
             } catch (error) {
                 console.error("Google Login Error:", error);
                 errorMessage.textContent = getFriendlyErrorMessage(error.code);
@@ -189,7 +187,7 @@
             try {
                 const provider = new FacebookAuthProvider();
                 await signInWithPopup(auth, provider);
-                // onAuthStateChanged will handle the UI update
+                // onAuthStateChanged will handle showing the welcome view
             } catch (error) {
                 console.error("Facebook Login Error:", error);
                 errorMessage.textContent = getFriendlyErrorMessage(error.code);
@@ -229,22 +227,15 @@
         // --- Helper Functions ---
         function getFriendlyErrorMessage(errorCode) {
             switch (errorCode) {
-                case 'auth/invalid-email':
-                    return 'Please enter a valid email address.';
+                case 'auth/invalid-email': return 'Please enter a valid email address.';
                 case 'auth/user-not-found':
                 case 'auth/wrong-password':
-                case 'auth/invalid-credential':
-                     return 'Invalid email or password. Please try again.';
-                case 'auth/too-many-requests':
-                    return 'Too many login attempts. Please try again later.';
-                case 'auth/email-already-in-use':
-                    return 'An account already exists with this email address.';
-                case 'auth/weak-password':
-                    return 'Password is too weak. It should be at least 6 characters.';
-                case 'auth/account-exists-with-different-credential':
-                    return 'An account already exists with this email. Try signing in with Google or Facebook.';
-                default:
-                    return 'An unexpected error occurred. Please try again.';
+                case 'auth/invalid-credential': return 'Invalid email or password. Please try again.';
+                case 'auth/too-many-requests': return 'Too many login attempts. Please try again later.';
+                case 'auth/email-already-in-use': return 'An account already exists with this email address.';
+                case 'auth/weak-password': return 'Password is too weak. It should be at least 6 characters.';
+                case 'auth/account-exists-with-different-credential': return 'An account already exists with this email. Try signing in with another method.';
+                default: return 'An unexpected error occurred. Please try again.';
             }
         }
     </script>
