@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -14,11 +15,29 @@
         .small-caps {
             font-variant: small-caps;
         }
+        .loader {
+            border: 4px solid #f3f3f3; /* Light grey */
+            border-top: 4px solid #3498db; /* Blue */
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body class="bg-gray-100 dark:bg-gray-900 text-gray-900 dark:text-gray-100">
 
     <div id="app" class="flex items-center justify-center min-h-screen">
+        <!-- Loading View (for redirect handling) -->
+        <div id="loading-view" class="hidden flex-col items-center">
+            <div class="loader"></div>
+            <p class="mt-4 text-lg text-gray-600 dark:text-gray-400">Finalizing login...</p>
+        </div>
+
         <!-- Login View -->
         <div id="login-view" class="w-full max-w-md p-8 space-y-6 bg-white dark:bg-gray-800 rounded-lg shadow-md">
             <h1 id="form-title" class="text-3xl font-bold text-center text-gray-900 dark:text-white">Welcome Back!</h1>
@@ -98,7 +117,8 @@
             signInWithEmailAndPassword, 
             GoogleAuthProvider,
             FacebookAuthProvider,
-            signInWithPopup,
+            signInWithRedirect, // Changed from signInWithPopup
+            getRedirectResult,  // New function to handle the result
             signOut 
         } from "https://www.gstatic.com/firebasejs/12.0.0/firebase-auth.js";
         
@@ -117,6 +137,7 @@
         const auth = getAuth(app);
 
         // --- DOM Elements ---
+        const loadingView = document.getElementById('loading-view');
         const loginView = document.getElementById('login-view');
         const welcomeView = document.getElementById('welcome-view');
         const loginForm = document.getElementById('login-form');
@@ -132,9 +153,28 @@
         const toggleText = document.getElementById('toggle-text');
 
         let isLoginMode = true;
+        
+        // --- NEW: Handle Redirect Result ---
+        // This code runs as soon as the page loads to check if we're coming back from Google/Facebook
+        getRedirectResult(auth)
+            .then((result) => {
+                // If result is not null, the user has just signed in.
+                // The onAuthStateChanged listener below will handle showing the welcome screen.
+                if (result) {
+                    // Hide the login form and show a loading spinner while onAuthStateChanged catches up
+                    loginView.classList.add('hidden');
+                    loadingView.classList.remove('hidden');
+                }
+            }).catch((error) => {
+                // Handle Errors here.
+                console.error("Redirect Result Error:", error);
+                errorMessage.textContent = getFriendlyErrorMessage(error.code);
+            });
 
-        // --- Authentication Logic (Restored to original) ---
+
+        // --- Authentication Logic ---
         onAuthStateChanged(auth, user => {
+            loadingView.classList.add('hidden'); // Always hide loader after check
             if (user) {
                 // User is signed in, show the welcome view
                 const username = user.displayName || user.email.split('@')[0];
@@ -169,29 +209,15 @@
         });
         
         // Handle Google Login
-        googleLoginBtn.addEventListener('click', async () => {
-            errorMessage.textContent = '';
-            try {
-                const provider = new GoogleAuthProvider();
-                await signInWithPopup(auth, provider);
-                // onAuthStateChanged will handle showing the welcome view
-            } catch (error) {
-                console.error("Google Login Error:", error);
-                errorMessage.textContent = getFriendlyErrorMessage(error.code);
-            }
+        googleLoginBtn.addEventListener('click', () => {
+            const provider = new GoogleAuthProvider();
+            signInWithRedirect(auth, provider); // Changed to redirect
         });
 
         // Handle Facebook Login
-        facebookLoginBtn.addEventListener('click', async () => {
-            errorMessage.textContent = '';
-            try {
-                const provider = new FacebookAuthProvider();
-                await signInWithPopup(auth, provider);
-                // onAuthStateChanged will handle showing the welcome view
-            } catch (error) {
-                console.error("Facebook Login Error:", error);
-                errorMessage.textContent = getFriendlyErrorMessage(error.code);
-            }
+        facebookLoginBtn.addEventListener('click', () => {
+            const provider = new FacebookAuthProvider();
+            signInWithRedirect(auth, provider); // Changed to redirect
         });
 
         // Handle logout
